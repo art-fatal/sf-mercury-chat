@@ -1,0 +1,1 @@
+$env:MERCURE_PUBLISHER_JWT_KEY='art-fatal@272613:art-fatal@272613';$env:MERCURE_SUBSCRIBER_JWT_KEY='art-fatal@272613:art-fatal@272613';.\mercure.exe run -config .\Caddyfile.dev

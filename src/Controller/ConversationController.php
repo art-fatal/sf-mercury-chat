@@ -10,7 +10,9 @@ use App\Repository\UserRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Mercure\HubInterface;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\WebLink\Link;
 
 /**
  * @Route("/conversation", name="conversation_")
@@ -38,10 +40,13 @@ class ConversationController extends AbstractController
     /**
      * @Route("/list", name="list", methods={"GET"})
      */
-    public function list(): Response
+    public function list(Request $request, HubInterface $hub): Response
     {
-        $conversations = $this->conversationRepository->findByUser($this->getUser());
+        $user = $this->getUser();
+        $user = $this->userRepository->find(1);
+        $conversations = $this->conversationRepository->findByUser($user);
 
+        $this->addLink($request, new Link('mercure', $hub->getUrl()));
         return $this->json($conversations);
     }
 
