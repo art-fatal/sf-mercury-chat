@@ -20,6 +20,9 @@ import ReceiverMessage from "./ReceiverMessage";
 import InputMessage from "./InputMessage";
 
 export default {
-  components: {InputMessage, ReceiverMessage, SenderMessage}
+  components: {InputMessage, ReceiverMessage, SenderMessage},
+  mounted() {
+    console.log(this.$route.params.id)
+  }
 }
 </script>

@@ -1,5 +1,4 @@
 <template>
-
   <router-link :to="{name: 'conversation', params: {id:conversation.conversationId}}"
                class="list-group-item list-group-item-action list-group-item-light rounded-0">
     <div class="media"><img src="https://bootstrapious.com/i/snippets/sn-chat/avatar.svg" alt="user" width="50"

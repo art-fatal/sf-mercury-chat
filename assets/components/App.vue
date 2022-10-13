@@ -3,7 +3,7 @@
     <div class="row rounded-lg overflow-hidden shadow">
       <!-- Users box-->
       <Left />
-      <router-view></router-view>
+      <router-view :key="$route.fullPath"></router-view>
       <!-- Chat Box-->
     </div>
   </div>

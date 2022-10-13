@@ -9,48 +9,37 @@
 import './styles/app.css';
 import './styles/main.css';
 
-// start the Stimulus application
-import './bootstrap';
-
-import { createApp } from 'vue';
+import Vue  from 'vue';
 import VueRouter from 'vue-router'
 import store from "./modules/store";
 import App from './components/App';
 import Blank from "./components/Right/Blank";
 import Right from "./components/Right/Right";
 
-const app = createApp(App);
-app.use(router);
-app.use(store);
+Vue.use(VueRouter)
 
-app.mount('#app')
-//
-// Vue.use(VueRouter)
-//
-// const routes = [
-//     {
-//         name: 'blank',
-//         path: "/",
-//         component: Blank
-//     },
-//     {
-//         name: 'conversation',
-//         path: "/conversation/:id",
-//         component: Right
-//     },
-// ]
-//
-// const router = new VueRouter({
-//     mode: "abstract",
-//     routes,
-// })
-//
-// Vue.prototype.$store = store
-//
-// const app = new Vue({
-//     store,
-//     router,
-//     render: h => h(App)
-// }).$mount('#app')
-//
-// router.replace('/')
+const routes = [
+    {
+        name: 'blank',
+        path: "/",
+        component: Blank
+    },
+    {
+        name: 'conversation',
+        path: "/conversation/:id",
+        component: Right
+    },
+]
+
+const router = new VueRouter({
+    mode: "abstract",
+    routes,
+})
+
+const app = new Vue({
+    store,
+    router,
+    render: h => h(App)
+}).$mount('#app')
+
+router.replace('/')
