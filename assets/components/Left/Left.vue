@@ -22,11 +22,25 @@ import Conversation from "./Conversation";
 export default {
   components: {Conversation},
   computed: {
-    ...mapGetters(["CONVERSATIONS"])
+    ...mapGetters(["CONVERSATIONS", "HUBURL", "USERNAME"])
+  },
+  methods:{
+    updateConversations(data){
+      this.$store.commit("UPDATE_CONVERSATIONS", data)
+    }
   },
   mounted() {
+    const vm = this;
     this.$store.dispatch("GET_CONVERSATIONS")
-        .then()
+        .then(() => {
+          let url = new URL(this.HUBURL)
+          url.searchParams.append('topic', `conversations/${this.USERNAME}`)
+          const eventSource = new EventSource(url);
+
+          eventSource.onmessage = function (event) {
+            vm.updateConversations(JSON.parse(event.data))
+          }
+        })
   }
 }
 </script>

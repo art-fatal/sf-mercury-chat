@@ -3,42 +3,43 @@
 namespace App\Controller;
 
 use App\Entity\Conversation;
+use App\Entity\Message;
 use App\Entity\Participant;
 use App\Entity\User;
 use App\Repository\ConversationRepository;
+use App\Repository\MessageRepository;
+use App\Repository\ParticipantRepository;
 use App\Repository\UserRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Mercure\HubInterface;
+use Symfony\Component\Mercure\Update;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
 use Symfony\Component\WebLink\Link;
 
 /**
- * @Route("/conversation", name="conversation_")
+ * @Route("/conversations", name="conversation_")
  * @method User getUser()
  */
 class ConversationController extends AbstractController
 {
+    const MESSAGE_ATTRIBUTES_TO_SERIALIZE = ['id', 'content', 'createdAt', 'mine'];
 
-    /**
-     * @var UserRepository
-     */
-    private $userRepository;
-    /**
-     * @var ConversationRepository
-     */
-    private $conversationRepository;
+    private UserRepository $userRepository;
+    private ConversationRepository $conversationRepository;
 
     public function __construct(UserRepository $userRepository, ConversationRepository $conversationRepository)
     {
-
         $this->userRepository = $userRepository;
         $this->conversationRepository = $conversationRepository;
     }
 
     /**
-     * @Route("/list", name="list", methods={"GET"})
+     * @Route("/", name="collection", methods={"GET"})
      */
     public function list(Request $request, HubInterface $hub): Response
     {
@@ -51,49 +52,72 @@ class ConversationController extends AbstractController
     }
 
     /**
-     * @Route("/{user}", name="get", methods={"GET"})
+     * @Route("/{conversation}/messages", name="get", methods={"GET"})
      */
-    public function getConversationWithUser(Request $request, User $user): Response
+    public function index(Conversation $conversation, MessageRepository $messageRepository): Response
     {
+        // TODO on security fixed
+//        $this->denyAccessUnlessGranted('view', $conversation);
+        $user = $this->getUser();
+        $user = $this->userRepository->find(1);
+        $messages = $messageRepository->findBy(['conversation' => $conversation], ['id' => 'ASC']);
 
-        $conversation = $this->conversationRepository->findByUser($this->getUser(), $user);
+        array_map(function (Message $message) use ($user) {
+            $message->setMine($message->getUser()->getId() === $user->getId());
+        }, $messages);
 
-        if (count($conversation)) {
-
-            return $this->json([
-                'id' => $conversation->getId(),
-            ], Response::HTTP_CREATED, [], []);
-        } else {
-            throw new \Exception("Conversation Not Found");
-        }
-
+        return $this->json($messages, Response::HTTP_OK, [], [
+            'attributes' => self::MESSAGE_ATTRIBUTES_TO_SERIALIZE
+        ]);
     }
 
+
     /**
-     * @Route("/{user}", name="new", methods={"POST"})
+     * @Route("/{conversation}/messages", name="post", methods={"POST"})
      */
-    public function new(Request $request, User $user): Response
+    public function new(
+        Request                $request,
+        Conversation           $conversation,
+        EntityManagerInterface $manager,
+        ParticipantRepository  $participantRepository,
+        SerializerInterface    $serializer,
+        UserRepository         $userRepository,
+        MessageRepository      $messageRepository,
+        HubInterface           $hub
+    ): JsonResponse
     {
+        $creator = $this->getUser();
+        $creator = $userRepository->findOneBy(['id' => 1]);
+        $content = $request->get('content');
 
-        if ($user->getId() == $this->getUser()->getId()) {
-            throw new \Exception("That's deep but you cannot create a conversation with yourself");
+        $message = (new Message())
+            ->setUser($creator)
+            ->setContent($content)
+            ->setConversation($conversation);
+        $conversation->setLastMessage($message);
+
+        $messageRepository->add($message);
+        $manager->persist($conversation);
+        $manager->flush();
+
+        $topics = [
+            "/conversations/{$conversation->getId()}",
+        ];
+        $recipients = $participantRepository->findByConversationAndUser($conversation, $creator);
+        foreach ($recipients as $recipient) {
+            $topics[] = "/conversations/{$recipient->getUser()->getUsername()}";
         }
+        $message->setMine(false);
 
-        $conversation = $this->conversationRepository->findByUser($this->getUser(), $user);
+        $update = new Update(
+            $topics,
+            $serializer->serialize($message, 'json', [
+                'attributes' => ['id', 'content', 'createdAt', 'mine', 'conversation' => ['id']]
+            ])
+        );
 
-        if (count($conversation)) {
-            throw new \Exception("The conversation already exists");
-        }
-
-
-        $conversation = (new Conversation())
-            ->addParticipant((new Participant())->setUser($user))
-            ->addParticipant((new Participant())->setUser($this->getUser()));
-
-        $this->conversationRepository->add($conversation, true);
-
-        return $this->json([
-            'id' => $conversation->getId(),
-        ], Response::HTTP_CREATED, [], []);
+        $message->setMine(true);
+        $hub->publish($update);
+        return $this->json($message, Response::HTTP_CREATED, [], ['attributes' => self::MESSAGE_ATTRIBUTES_TO_SERIALIZE]);
     }
 }

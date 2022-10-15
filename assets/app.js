@@ -33,8 +33,11 @@ const routes = [
 
 const router = new VueRouter({
     mode: "abstract",
+    linkActiveClass: "active",
     routes,
 })
+
+store.commit("SET_USERNAME", document.getElementById("app").dataset.username)
 
 const app = new Vue({
     store,
